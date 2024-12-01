@@ -171,19 +171,76 @@ RT_THROTTLING: starvation due to high priority process running e.g. infinite loo
 
 ---
 
-# Difficulties/Complexities
+# Complexities \[2]
 
-<v-clicks>
+<v-clicks depth=2>
+
+- General Purpose OS (GPOS) $\perp$ RTOS
+  - Execution time vs average performance
+- (Multi core) task scheduling
+- (Generality)
+- `PREEMPT_RT` at heart of Kernel
+- May not roadblock Kernel development \[0]
 
 </v-clicks>
+
+<footer class="text-[10px] mt-auto font-thin">
+
+\[0] https://www.linux.com/news/in-the-trenches-with-thomas-gleixner-real-time-linux-kernel-patch-set \
+\[2] Federico Reghenzani, Giuseppe Massari, and William Fornaciari. 2019. The Real-Time Linux Kernel: A Survey on PREEMPT_RT. ACM Comput. Surv. 52, 1, Article 18 (February 2019), 36 pages. https://doi.org/10.1145/3297714
+</footer>
 
 ---
 
-# Advantages
+# Difficulties
+
+<figure class="h-104 w-full flex gap-4 justify-center">
+  <img src="https://imgs.xkcd.com/comics/dependency.png" class="h-full ml-50"/>
+  <figcaption class="mt-auto"> <a href="https://xkcd.com/2347"> https://xkcd.com/2347 </a> </figcaption>
+</figure>
+
+---
+
+# Difficulties \[0], \[2]
+
+<v-clicks depth=2>
+
+- Funding
+- Supporters
+- Long-term commitment
+- Validating `PREEMPT_RT`
+  - LF ELISA
+
+</v-clicks>
+
+<footer class="text-[10px] mt-auto font-thin">
+
+\[0] https://www.linux.com/news/in-the-trenches-with-thomas-gleixner-real-time-linux-kernel-patch-set \
+\[2] Federico Reghenzani, Giuseppe Massari, and William Fornaciari. 2019. The Real-Time Linux Kernel: A Survey on PREEMPT_RT. ACM Comput. Surv. 52, 1, Article 18 (February 2019), 36 pages. https://doi.org/10.1145/3297714
+</footer>
+
+---
+
+# Advantages \[0], \[2]
 
 <v-clicks>
 
+- It's Linux!
+- FOSS
+- Versatile
+- Scalable
+- More complex applications
+- Quality of Life features
+- Accessibility
+
+
 </v-clicks>
+
+<footer class="text-[10px] mt-auto font-thin">
+
+\[0] https://www.linux.com/news/in-the-trenches-with-thomas-gleixner-real-time-linux-kernel-patch-set \
+\[2] Federico Reghenzani, Giuseppe Massari, and William Fornaciari. 2019. The Real-Time Linux Kernel: A Survey on PREEMPT_RT. ACM Comput. Surv. 52, 1, Article 18 (February 2019), 36 pages. https://doi.org/10.1145/3297714
+</footer>
 
 ---
 
