@@ -101,13 +101,29 @@ _— Dr. Doug Niehaus, RT Linux team (RIP since Aug 30th, 2012)_
 
 <v-clicks>
 
-- Closed source, proprietary
-- Expensive (licenses + devs)
-- Legacy, unmaintained
-- Specialized
-- Barebones
+- Closed source, proprietary 👎
+- Expensive (licenses + devs) 👎
+- Legacy, unmaintained 👎
+- Specialized 👍👎
+- Barebones 👍👎
+- Highly optimized 👍
+- 🚀 w.r.t. scheduling latencies 👍
 
 </v-clicks>
+
+<v-click>
+
+Examples:
+
+- Xenomai, RTAI, RTLinux
+- Xenomai <= `PREEMPT_RT` \[10]
+</v-click>
+
+<footer class="text-[9px] -mt-2 font-thin">
+
+\[2] Federico Reghenzani, Giuseppe Massari, and William Fornaciari. 2019. The Real-Time Linux Kernel: A Survey on PREEMPT_RT. ACM Comput. Surv. 52, 1, Article 18 (February 2019), 36 pages. https://doi.org/10.1145/3297714 \
+\[10] https://web.archive.org/web/20070929083816/https://mail.gna.org/public/xenomai-help/2006-08/msg00115.html
+</footer>
 
 ---
 
@@ -158,18 +174,47 @@ _— Dr. Doug Niehaus, RT Linux team (RIP since Aug 30th, 2012)_
 
 ---
 
-# Digging Deeper: `PREEMPT_RT`
+# What changed?
 
 <v-clicks>
 
 - Scheduler improvements
-- Kernel analysis tools
 - Latency/Timing optimizations
+- Kernel analysis tools
 - Amount of Non-preemptible Kernel code 📉
 - `rt_mutex` with priority inheritance
-- Two new preemption levels
 
 </v-clicks>
+
+<v-click at="10">
+
+- Two new preemption levels
+
+</v-click>
+
+<div v-click="[5, 10]" class="absolute left-140 top-30 flex flex-col items-center">
+  <div class="flex">
+    <div class="w-14 h-14 flex justify-center items-center rounded-full border">
+      <div v-click="[5, 9]" class="absolute">
+        P2
+      </div>
+      <div v-click="[9, 10]" class="absolute">
+        P0
+      </div>
+    </div>
+    <Arrow x1="120" y1="25" x2="0" y2="25" class="relative w-30"/>
+    <div class="w-14 h-14 flex justify-center items-center rounded-full border">
+      <v-switch>
+        <template #0>P0</template>
+        <template #1-3><s>P0</s> P2</template>
+        <template #3-5>P0</template>
+      </v-switch>
+    </div>
+  </div>
+  <div v-click="7" class="w-14 h-14 flex justify-center items-center rounded-full border">
+    P1
+  </div>
+</div>
 
 <footer class="text-[10px] mt-auto font-thin">
 
@@ -206,9 +251,15 @@ New in `PREEMPT_RT`:
 
 </v-clicks>
 
+<figure class="w-120 flex flex-col items-end self-end -mt-50 -mb-6">
+  <img src="/preemption.png" />
+  <figcaption>[11]</figcaption> 
+</figure>
+
 <footer class="text-[10px] mt-auto font-thin">
 
-\[6] https://wiki.linuxfoundation.org/realtime/documentation/technical_basics/preemption_models
+\[6] https://wiki.linuxfoundation.org/realtime/documentation/technical_basics/preemption_models \
+\[11] Ye, Y., Li, P., Li, Z., Xie, F., Liu, XJ., Liu, J. (2021). Real-Time Design Based on PREEMPT_RT and Timing Analysis of Collaborative Robot Control System. In: Liu, XJ., Nie, Z., Yu, J., Xie, F., Song, R. (eds) Intelligent Robotics and Applications. ICIRA 2021. Lecture Notes in Computer Science(), vol 13014. Springer, Cham. https://doi.org/10.1007/978-3-030-89098-8_56
 </footer>
 
 <!--
@@ -240,7 +291,7 @@ Solution:
 <v-clicks>
 
 - Main idea: per-console locks
-- Console priorities: `normal`, `emergency`, `panic`
+- Console priorities: `normal`, `error`, `emergency` ("panic"), ...
 - New kthreads for flushing `normal` messages
   - on NBCON consoles
   - on all consoles if `CONFIG_RT` enabled
@@ -252,6 +303,17 @@ Solution:
 - ...
 
 </v-click>
+
+
+<div v-click="6" class="absolute w-130 right-0 m-12 mt-16 py-4">
+
+```c
+printk(KERN_DEFAULT "Hello world!") // priority: default
+printk(KERN_ERR "Hello error world!") // priority 3
+printk(KERN_EMERG "Hello panic world!") // priority: 0
+
+```
+</div>
 
 <footer class="text-[10px] mt-auto font-thin">
 
@@ -297,6 +359,10 @@ NBCON; Non-blocking console, outside legacy console_lock constraints
 
 </v-clicks>
 
+<img v-click="2" src="/arm.svg" class="w-30 self-end mr-60 -mt-46"/>
+<img v-click="2" src="/intel.png" class="w-30 self-end mr-10 mt-20"/>
+<img v-click="2" src="/texas-instruments.svg" class="w-36 self-end mr-80 mt-4 bg-white/90"/>
+
 <footer class="text-[10px] mt-auto font-thin">
 
 \[3] https://wiki.linuxfoundation.org/realtime/documentation/technical_basics/sched_policy_prio/sched_deadline \
@@ -313,7 +379,7 @@ RT_THROTTLING: starvation due to high priority process running e.g. infinite loo
 
 # Complexities
 
-<v-clicks depth=2>
+<v-clicks>
 
 - General Purpose OS (GPOS) $\perp$ RTOS
   - Execution time vs average performance
@@ -334,24 +400,26 @@ RT_THROTTLING: starvation due to high priority process running e.g. infinite loo
 
 # Difficulties
 
-<figure class="h-104 w-full flex gap-4 justify-center">
-  <img src="https://imgs.xkcd.com/comics/dependency.png" class="h-full ml-40"/>
-  <figcaption class="mt-auto text-xs"> <a href="https://xkcd.com/2347"> https://xkcd.com/2347 </a> </figcaption>
+<figure class="h-104 w-full flex flex-col items-center justify-center">
+  <img src="https://imgs.xkcd.com/comics/dependency.png" class="h-full"/>
+  <figcaption class="text-xs"> <a href="https://xkcd.com/2347"> https://xkcd.com/2347 </a> </figcaption>
 </figure>
 
 ---
 
 # Difficulties
 
-<v-clicks depth=2>
+<v-clicks>
 
-- Funding
+- Funding 💸
 - Supporters
 - Long-term commitment
 - Validating `PREEMPT_RT`
   - LF ELISA
 
 </v-clicks>
+
+<img v-click="4" src="/approved.png" class="w-24 -mt-16 ml-54"/>
 
 <footer class="text-[10px] mt-auto font-thin">
 
@@ -376,11 +444,30 @@ RT_THROTTLING: starvation due to high priority process running e.g. infinite loo
 
 </v-clicks>
 
+<figure v-click="4" class="absolute w-160 flex flex-col items-center justify-center self-end mt-44 -mr-8">
+  <img src="/complexity.png" class="h-full"/>
+  <figcaption class="text-xs"> <a href="https://xkcd.com/1667"> https://xkcd.com/1667 </a> </figcaption>
+</figure>
+
 <footer class="text-[10px] mt-auto font-thin">
 
 \[0] https://www.linux.com/news/in-the-trenches-with-thomas-gleixner-real-time-linux-kernel-patch-set \
 \[2] Federico Reghenzani, Giuseppe Massari, and William Fornaciari. 2019. The Real-Time Linux Kernel: A Survey on PREEMPT_RT. ACM Comput. Surv. 52, 1, Article 18 (February 2019), 36 pages. https://doi.org/10.1145/3297714
 </footer>
+
+--- 
+
+# Summary
+
+- Idea of RT Linux *not* new
+- `PREEMPT_RT` patch with
+  - Scheduler improvements
+  - New preemption modes
+  - Kernel code changes
+  - (New) Locking mechanisms
+  - Updated libraries
+- High impact on the Kernel + Linux in general
+- Not as fast as RTOS, but very good
 
 ---
 
@@ -393,9 +480,16 @@ RT_THROTTLING: starvation due to high priority process running e.g. infinite loo
 - \[4] https://wiki.linuxfoundation.org/realtime/documentation/technical_basics/sched_rt_throttling
 - \[5] https://wiki.linuxfoundation.org/realtime/documentation/technical_details/start
 - \[6] https://wiki.linuxfoundation.org/realtime/documentation/technical_basics/preemption_models
+
+---
+
+# References
+
 - \[7] https://lwn.net/Articles/146861/
 - \[8] https://lwn.net/ml/linux-kernel/CAHk-%3Dwie%2BVC-R5%3DHm%3DVrg5PLrJxb1XiV67Efx-9Cr1fBKCWHTQ%40mail.gmail.com
 - \[9] https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=c903327d3295b135eb8c81ebe0b68c1837718eb8
+- \[10] https://web.archive.org/web/20070929083816/https://mail.gna.org/public/xenomai-help/2006-08/msg00115.html
+- \[11] Ye, Y., Li, P., Li, Z., Xie, F., Liu, XJ., Liu, J. (2021). Real-Time Design Based on PREEMPT_RT and Timing Analysis of Collaborative Robot Control System. In: Liu, XJ., Nie, Z., Yu, J., Xie, F., Song, R. (eds) Intelligent Robotics and Applications. ICIRA 2021. Lecture Notes in Computer Science(), vol 13014. Springer, Cham. https://doi.org/10.1007/978-3-030-89098-8_56
 
 ---
 layout: 
