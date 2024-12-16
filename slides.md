@@ -40,15 +40,25 @@ _— Dr. Doug Niehaus, RT Linux team (RIP since Aug 30th, 2012)_
 
 # Requirements of RTOS
 
-<v-clicks>
+<v-click>
 
-- "Temporal determinism"
+- 'Temporal determinism'
+
+</v-click>
+
+<v-click>
+
 - Event driven
 - Preemptible kernel
 - Priority-based process switching
+
+</v-click>
+
+<v-click>
+
 - Verifiable/Provable
 
-</v-clicks>
+</v-click>
 
 ---
 
@@ -142,19 +152,11 @@ Examples:
 <v-clicks>
 
 - <2000: early research 
-- Cokernel \[0]
-  - Timing issues
-  - Expensive memory swapping
-  - Invasive
+- Cokernel 
 - 2004: uncoordinated efforts towards kernel patches
   - $\Rightarrow$ Chaos
 
 </v-clicks>
-
-<figure class="w-86 flex flex-col items-end self-end -mt-60 -mb-6" v-click="[2, 3]">
-  <img src="/cokernel.png" />
-  <figcaption>[0]</figcaption> 
-</figure>
 
 <footer class="text-[9px] mt-auto font-thin">
 
@@ -162,12 +164,6 @@ Examples:
 \[1] A. Casimiro, P. Martins and P. Verissimo, "How to build a timely computing base using real-time Linux," 2000 IEEE IWFCS. Proceedings (Cat. No.00TH8531), Porto, Portugal, 2000 \
 \[2] https://www.linux.com/news/in-the-trenches-with-thomas-gleixner-real-time-linux-kernel-patch-set
 </footer>
-
-<!--
-(a) RTAI
-(b) Xenomai
-(c) RT Linux
--->
 
 ---
 
@@ -187,6 +183,11 @@ Examples:
 
 \[2] https://www.linux.com/news/in-the-trenches-with-thomas-gleixner-real-time-linux-kernel-patch-set
 </footer>
+
+<!--
+Merged: Sep 20th 2024 \
+Kernel 6.12:  Nov 17th 2024
+-->
 
 ---
 
@@ -419,7 +420,7 @@ NBCON; Non-blocking console, outside legacy console_lock constraints
 
 <v-clicks>
 
-- `PREEMPT_RT` in kernel 6.12; November 18th, 2024
+- `PREEMPT_RT` in kernel 6.12; November 17th, 2024
 - Linux Foundation (LF) ELISA
   - ARM, BMW, RedHat, Intel, Texas Instruments, ...
 - `SCHED_DEADLINE`
@@ -616,4 +617,30 @@ layout:
 
 <!--
 Throughput: no good (recent) sources 
+-->
+
+---
+
+# Cokernel
+
+- Timing issues
+- Expensive memory swapping
+- Invasive
+- Mainly interrupt dispatcher & scheduler
+- RTAI, Xenomai, RTLinux
+
+<figure class="w-100 flex flex-col items-end self-end -mt-40">
+  <img src="/cokernel.png" />
+  <figcaption>[0]</figcaption> 
+</figure>
+
+<footer class="text-[10px] mt-auto font-thin">
+
+\[0] Federico Reghenzani, Giuseppe Massari, and William Fornaciari. 2019. The Real-Time Linux Kernel: A Survey on PREEMPT_RT. ACM Comput. Surv. 52, 1, Article 18 (February 2019)
+</footer>
+
+<!--
+(a) RTAI
+(b) Xenomai
+(c) RT Linux
 -->
