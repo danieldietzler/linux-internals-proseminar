@@ -27,6 +27,11 @@ Daniel Dietzler
   <figcaption><a href="https://t1p.de/rt-linux">https://t1p.de/rt-linux</a></figcaption>
 </figure>
 
+<!--
+Today: real time systems, systems that are *very* reactive and can *quickly* respond \ 
+e.g. aviation, space travel, cars, but also medicine
+-->
+
 ---
 layout: quote
 ---
