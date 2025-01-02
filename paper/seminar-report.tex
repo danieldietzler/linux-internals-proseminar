@@ -324,6 +324,92 @@ For instance, a console becomes \emph{unsafe} if it has experienced a hostile ta
 In case of a \emph{panic}, the process will always try to print to a save console to increase its chances \cite{gleixner_printk_2024}.
 If there is none available, it will try its final flush on an unsafe console and "Hope and pray" \cite{kernel_development_community_console}.
 
+\section{Evaluation/Summary}
+\subsection{RTOS vs \code{PREEMPT\_RT}}
+Why would you even want to use a Linux \acrshort{rt} patch?
+Traditional \acrshort{rtos} are highly specialized in their area.
+Specifically, they do not have a standard mainline Linux kernel.
+That comes with a variety of difficulties.
+Firstly, the feature set of those specialized kernels is much reduced.
+For instance, Xenomai has a much reduced network stack with only a partial, simple implementation of TCP \cite{xenomai_network_2024}.
+
+Secondly, given Linux' popularity, there are a lot of libraries built for Linux.
+On typical \acrshort{rtos} you cannot use those and need to write lots software again yourself.
+That is a non-trivial task and requires much more time and money.
+
+Thirdly, having non-popular libraries and a non-standard kernel, specialized developers are needed.
+Most low level developers know Linux, but only a few actually are experienced with e.g., RTAI.
+
+Lastly, Linux runs on all sorts of CPUs and hosts in general.
+This however is not the case with \acrshort{rtos}.
+It is getting better though, Xenomai for instance has full support for x86 by now \cite{xenomai_supported}.
+Also, the nature of cokernel approaches implies having to write an abstraction layer for every Linux kernel version.
+This naturally implies \acrshort{rtos} are always behind the latest kernel version \cite{xenomai_versions}.
+\newline
+
+\noindent The \code{PREEMPT\_RT} patch on the other hand suffers rather from infrastructural issues.
+The working group around the patch lacks resources.
+As is with many open source projects, funding is a problem here, too \cite{jason_perlow_trenches_2021}.
+Companies do not like to spend for "free"\footnote{It does not cost money to use. That explicitly does not mean the software does not cost any money given developers spent time working on it --- money.} software.
+Even more so do they not want to support a project when they already have an alternative RTOS and the developers for it.
+
+Secondly, it also lacks long-term commitment, both from the developers as well as supporters \cite{jason_perlow_trenches_2021}.
+If there is not enough money to pay more developers, developers are less likely to commit (lots of) their time to it.
+
+
+\subsection{Hard RTOS?}
+Linux is a huge and extremely complicated codebase.
+Additionally, it can be run on a variety of different systems.
+As such, modelling the Linux runtime environment for formal proofs is virtually impossible \cite{reghenzani_realtime_2019}.
+This however implies, that \code{PREEMPT\_RT} cannot ever reach the same reliability level as \acrshort{rtos}.
+The promises that can be made about \code{PREEMPT\_RT} do not have a chance to be as strong as those that can be made about \acrshort{rtos} \cite{reghenzani_realtime_2019}.
+The \acrfull{lf} project \emph{ELISA}\footnote{\url{https://elisa.tech}} aims to validate the patch, but a 100\% validation seems impossible \cite{jason_perlow_trenches_2021}.
+Gleixner himself says that "[the] Real-Time Linux project never aimed at these narrow and specialized application spaces."\cite{jason_perlow_trenches_2021}
+The most critical applications that require formal validation and an absolute certainty should not rely on \code{PREEMPT\_RT}.
+
+This also puts \acrshort{rt} Linux in an odd position when trying to sort it into the \emph{soft}, \emph{firm}, and \emph{hard} hierarchy.
+As a reminder, \emph{soft} \acrshort{rt} systems can miss deadlines without any bad causes.
+They typically imply a degradation of the \acrshort{qos}, but the result itself is still valid.
+
+\emph{firm} systems do not cause any damage to people or systems if a result runs late.
+However, the result immediately becomes worthless.
+Thus, a late result is to be avoided where possible.
+
+Lastly, \emph{hard} \acrshort{rtos} do not tolerate any late results.
+If a computation does not meet a deadline, people or systems can be damaged.
+
+The \code{PREEMPT\_RT} patch provides stronger guarantees than \emph{firm} and especially \emph{soft} \acrshort{rt} systems require \cite{reghenzani_realtime_2019}.
+While doing a lot to also meet \emph{hard} \acrshort{rt} requirements, the community does not consider \acrshort{rt} Linux to be a \emph{hard} \acrshort{rt} system \cite{reghenzani_realtime_2019}.
+This is primarily due to the lack of formal provability \cite{reghenzani_realtime_2019}.
+So, \code{PREEMPT\_RT} sits somewhere in between \emph{firm} and \emph{hard} \acrshort{rtos}.
+The terms '95\% hard \acrshort{rt} systems' and 'probabilistic hard \acrshort{rt} systems' have evolved, trying to describe the state of the patch \cite{reghenzani_realtime_2019}.
+The idea of "probabilistic hard \acrshort{rt} systems' is to use statistical theories to describe the likelihood of environmental factors and based on that, obtain formal validation \cite{reghenzani_realtime_2019}.
+However, that is not a broadly accepted term yet and realistically \code{PREEMPT\_RT} is simply not a \emph{hard} RTOS \cite{reghenzani_realtime_2019} -- which it does not aims to be \cite{jason_perlow_trenches_2021}.
+
+\subsection{Performance}
+\cite{reghenzani_realtime_2019} summarized various articles measuring \code{PREEMPT\_RT} and comparing it to other \acrshort{rtos}:
+\code{PREEMPT\_RT} showed a scheduling latency that maxed out at $10 - 15\mu s$, overall being similar to the RTOS $\text{LITMUS}^{\text{RT}}$.
+In CPU-bound workloads it actually outperformed $\text{LITMUS}^{\text{RT}}$ in latency speed ($\sim 17\mu s$ vs $\sim 47\mu s$).
+
+Compared to RTAI and Xenomai the Linux kernel patch does not quite reach the same task switching speeds.
+While the \acrshort{rtos} manage averages of $<1\mu s$, \code{PREEMPT\_RT} always stays above that upper bound.
+In worst case scenarios \code{PREEMPT\_RT} manages to keep up with RTAI at around $20\mu s$, but being vastly outperformed by Xenomai with a worst case task switching speed of $\sim 2\mu s$.
+
+So, going by those numbers, I reach the same conclusion as \cite{reghenzani_realtime_2019}.
+\acrshort{rtos} specialization is still noticeable, and especially in worst case scenarios \code{PREEMPT\_RT} simply cannot keep up \cite{reghenzani_realtime_2019}.
+Yet, it must be remembered that Linux is a \acrshort{gpos} after all, trying to make the stretch between high throughput and reactive \acrshort{rt} behavior.
+
+While \cite{reghenzani_realtime_2019} only has outdated data, \cite{li_performance_2023} did some more recent throughput measurements themselves.
+They were running on a Raspberry Pi 4 with four cores and Ubuntu 20.04 LTS.
+I find this still quite representable, especially kernel 5.4 is -- although still quite dated by now -- much more recent than 2.6.33 from the comparison in \cite{reghenzani_realtime_2019}.
+Furthermore, the evaluation has been done well, precisely and easy to understand.
+It turns out that \code{PREEMPT\_RT} can lead to a 29\% throughput degradation when using all four cores, with only a 6\% degradation in singe core loads \cite{li_performance_2023}.
+This actually is similar to the dated results presented in \cite{reghenzani_realtime_2019} where they saw a degradation of up to 35\% in multi core loads.
+Especially for a file copy workload they have seen a decrease in throughput with an increase in core counts when using \code{PREEMPT\_RT} \cite{li_performance_2023}.
+This suggests that accessing a single device is not scalable with the kernel patch \cite{li_performance_2023}.
+Furthermore, they ran a mainline Linux kernel in a QEMU/KVM VM on top of the Linux host with \code{PREEMPT\_RT} enabled.
+They saw that running non-\acrshort{rt} processes in that VM yielded a 40\% higher throughput rate compared to running it on the \code{PREEMPT\_RT}-enabled host \cite{li_performance_2023}.
+Thus, given the minimal virtualization overhead, this could be a valid mitigation strategy \cite{li_performance_2023}.
 
 \printglossaries
 
