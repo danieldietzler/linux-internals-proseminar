@@ -56,6 +56,23 @@ Karlsruhe Institute of Technology, ITEC - OS
 %\draftfooter
 
 \begin{abstract}
+  Writing a patch to make Linux real-time took a lot of time and effort.
+  Starting in the early 2000s, \code{PREEMPT\_RT} made its way into Linux kernel 6.11 in late 2024.
+  It involves all sorts changes and rewrites.
+  Primary efforts were targeted at making more kernel code preemptible.
+  That involved reworking interrupt handling, replacing spin locks, and shrinking locked code sections.
+  Secondly, the scheduler had to be improved to reduce context switching latencies.
+  Additionally, a new deadline scheduler has been introduced.
+  Lastly, a variety of packages in the standard library had to be refactored.
+  They are essential for daily use, but were to slow for real-time applications.
+  As an example we will talk about \code{printk}.
+
+  Furthermore, we will discuss performance evaluations from various studies.
+  It can be seen that \code{PREEMPT\_RT} cannot keep up with specialized real-time operating systems in all scenarios, especially inw worst case analysis.
+  However, it is close to being a proper hard real-time operating system and sufficient for most applications.
+
+  Ideally \code{PREEMPT\_RT} will allow many projects that have to use real-time operating systems currently to switch in non-critical applications.
+  That would remove the extra burden of RTOS for those projects, and enable them to benefit from the broad adoption and feature-richness of Linux.
 \end{abstract}
 
 \section{Introduction}\label{sec:introduction}
