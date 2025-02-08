@@ -45,29 +45,29 @@
 
 \ifUKa@thesis
 
-%%
-%% Environment for Abstract
-%%
-\newenvironment{abstract}{%
-\pagestyle{empty}\cleardoublepage{}%
-\null\vfil\begin{center}\textbf{Abstract}\end{center}}
-{\par\vfil\null\cleardoublepage{}\pagestyle{headings}}
+  %%
+  %% Environment for Abstract
+  %%
+  \newenvironment{abstract}{%
+    \pagestyle{empty}\cleardoublepage{}%
+    \null\vfil\begin{center}\textbf{Abstract}\end{center}}
+  {\par\vfil\null\cleardoublepage{}\pagestyle{headings}}
 
 
-%%
-%% Environment for Acknowledgements
-%%
-\newenvironment{acknowledgments}{%
-\pagestyle{empty}\cleardoublepage{}%
-\null\vfil\begin{center}\textbf{Acknowledgments}\end{center}}
-{\par\vfil\null\cleardoublepage{}\pagestyle{headings}}
+  %%
+  %% Environment for Acknowledgements
+  %%
+  \newenvironment{acknowledgments}{%
+    \pagestyle{empty}\cleardoublepage{}%
+    \null\vfil\begin{center}\textbf{Acknowledgments}\end{center}}
+  {\par\vfil\null\cleardoublepage{}\pagestyle{headings}}
 
 \fi
 
 %%
 %% Draft footer indicating build time and revision of file.
 %%
-\providecommand{\Revision}{Revision: 1}
+\providecommand{\Revision}{Revision: 2}
 \providecommand{\RevisionDate}{Revision Date: unknown}
 \providecommand{\CopyrightHolder}{University of Karlsruhe}
 \providecommand{\AtConference}{Unspecified Conference}
@@ -100,15 +100,15 @@
   \fancyfoot{} % Clear the footer
   \cfoot{\thepage}
   \rfoot{\scriptsize{
-         \ifUKa@revisiondate
-	   \RevisionDate \\
-	 \else
-           \today{}, \hhmm \\
-	 \fi
-         \ifUKa@submit
-         To be submitted at \AtConference \\
-         \fi
-         \Revision}}
+      \ifUKa@revisiondate
+        \RevisionDate \\
+      \else
+        \today{}, \hhmm \\
+      \fi
+      \ifUKa@submit
+        To be submitted at \AtConference \\
+      \fi
+      \Revision}}
   \renewcommand{\headrulewidth}{0pt} % No header line
   \renewcommand{\footrulewidth}{0pt} % No footer line
 \else
