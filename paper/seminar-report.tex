@@ -159,11 +159,11 @@ This requires specialized developers and multiple versions of the same applicati
 
 \begin{figure}[hbt]
   \centering
-  \includegraphics[scale=.26, clip]{assets/cokernel.png}
+  \includegraphics[scale=.30, clip]{assets/cokernel.png}
   \caption{Cokernel approaches. (a) RTAI, (b) Xenomai, (c) RTLinux \cite{reghenzani_realtime_2019} \label{fig:cokernel}}
 \end{figure}
 Nonetheless, cokernel approaches are broadly represented in today's \acrshort{rtos} landscape.
-\emph{RTAI}\cite{rtai-docs}, \emph{Xenomai}\cite{xenomai-docs}, and \emph{RTLinux}\footnote{\url{https://en.wikipedia.org/wiki/RTLinux}. Note that this is \emph{not} \acrlong{rt} Linux.} are all popular examples of modern \acrshort{rtos} building on cokernels as can be seen in \autoref{fig:cokernel} \cite{reghenzani_realtime_2019}.
+\emph{RTAI}\cite{rtai-docs}, \emph{Xenomai}\cite{xenomai-docs}, and \emph{RTLinux}\footnote{Note that this is \emph{not} \acrlong{rt} Linux.}\cite{rtlinux}. are all popular examples of modern \acrshort{rtos} building on cokernels as can be seen in \autoref{fig:cokernel} \cite{reghenzani_realtime_2019}.
 In all cases, the mainline Linux kernel sits on top of a \acrshort{rt} (pico-)kernel.
 RTAI uses a pico-kernel called \emph{RTAI core} that schedules \acrshort{rt} kernel space processes.
 Then, on top of that there is the \acrfull{rthal} that provides the expected interfaces for the Linux kernel.
@@ -207,7 +207,8 @@ By default, that thread will be scheduled with \code{FIFO} and a high priority o
 
 For interrupt handlers that -- under no circumstances -- may run in a threaded context, there is an extra flag to disable this behavior per handler \cite{lf:irq}.
 Generally, one should be careful with this flag though.
-It will degrade interrupt performance and scheduling latencies of other incoming interrupts,  \cite{chyyuu_github_2017, mckenney_realtime_2005}, as well as be prone to deadlocks, making the development of those handlers harder \cite{mckenney_realtime_2005}.
+It will be prone to deadlocks, making the development of those handlers harder \cite{mckenney_realtime_2005}.
+Also, in order to reduce the amount of non-preemptible code, this flag should be used as rarely as possible.
 One example for forcing a handler to run in the interrupt context are per-CPU timer interrupts.
 With their tight schedules and low-level relevance, they qualify for being non-preemptible \cite{mckenney_realtime_2005}.
 
@@ -224,6 +225,36 @@ With \code{PREEMPT\_RT}, all \code{spinlock\_t} kernel spinlocks have been repla
 For \code{rt\_mutex}, \acrfull{pi} is implemented by giving each process a \acrshort{pi} \emph{rbtree}, depicting the dependencies of the waiters.
 A \acrshort{pi} rbtree of a process stores the top waiter, that is the process with the highest priority currently waiting for that lock, of every lock that is held by that process \cite{rostedt_rtmutex_2017}.
 This is called a \acrshort{pi} chain \cite{rostedt_rtmutex_2017}.
+\lstset{basicstyle=\small}
+\begin{lstlisting}[caption={Example from \cite{rostedt_rtmutex_2017}}]
+Process:  A, B, C, D, E
+Mutexes:  L1, L2, L3, L4
+
+A owns: L1
+        B blocked on L1
+        B owns L2
+               C blocked on L2
+               C owns L3
+                      D blocked on L3
+                      D owns L4
+                             E blocked on L4
+\end{lstlisting}
+Translating this example into a \acrshort{pi} chain results in this:
+\begin{lstlisting}[caption={Simple \acrshort{pi} chain \cite{rostedt_rtmutex_2017}}]
+E->L4->D->L3->C->L2->B->L1->A
+\end{lstlisting}
+By adding another process $F$ and a mutex $L5$ with the dependencies as follows
+\begin{lstlisting}[caption={Second \acrshort{pi} chain \cite{rostedt_rtmutex_2017}}]
+F->L5->B->L1->A
+\end{lstlisting}
+we can see multiple chains merged together:
+\begin{lstlisting}[caption={\acrshort{pi} chain \cite{rostedt_rtmutex_2017}}]
+E->L4->D->L3->C->L2-+
+                    |
+                    +->B->L1->A
+                    |
+              F->L5-+
+\end{lstlisting}
 Based on this chain, priorities can be changed in order to avoid priority inversion:
 A process further right in the chain must always have a priority equal to or higher than processes on the left of it \cite{rostedt_rtmutex_2017}.
 \newline
@@ -309,7 +340,7 @@ This can cause the next process to not meet its deadline as well, even though it
 Thus, such an unmeetable deadline can trickle down to all subsequent processes and cause an entire batch to be late.
 
 
-\subsection{Standard Library}
+\subsection{Kernel Library}
 In addition to those fundamental changes to the scheduler, locking, and preemption mechanisms, there were also libraries that needed updating that have a more noticeable impact on users.
 Some essential programs simply had too high latencies for a \acrshort{rt} application \cite{edge_discussion_2022}.
 As an example, we will be discussing \code{printk}, the kernel equivalent to \code{printf}.
@@ -421,6 +452,27 @@ This suggests that accessing a single device is not scalable with the kernel pat
 Furthermore, they ran a mainline Linux kernel in a QEMU/KVM VM on top of the Linux host with \code{PREEMPT\_RT} enabled.
 They saw that running non-\acrshort{rt} processes in that VM yielded a 40\% higher throughput rate compared to running it on the \code{PREEMPT\_RT}-enabled host \cite{li_performance_2023}.
 Thus, given the minimal virtualization overhead, this could be a valid mitigation strategy \cite{li_performance_2023} to feasible run non-\acrshort{rt} tasks with \code{PREEMPT\_RT} enabled.
+
+\section{Conclusion}
+The idea of making Linux \acrshort{rt}-capable has been around for a long time.
+20 years ago combined efforts were started being put into \code{PREEMPT\_RT}, the Linux kernel patch that made it into the mainline kernel in late 2024.
+\code{PREEMPT\_RT} cannot be considered a \emph{hard} \acrshort{rtos}.
+This is primarily due to the Linux kernel being very large and Linux' primary use case being a \acrshort{gpos}.
+However, \code{PREEMPT\_RT} aims at being a viable solution for many \emph{soft}/\emph{firm} \acrshort{rt} use cases.
+Contrary to other \acrshort{rtos}, developing on the Linux kernel allows to use many quality of life features and reduces friction in developing applications.
+In order to make \code{PREEMPT\_RT} happen, many changes were necessary:
+Primarily, non-preemptible sections have been reduced, specifically interrupt service routines.
+Additionally, locking updates were done to further make code sections in the kernel preemptible.
+Furthermore, the scheduler has been updated and a new scheduling policy got introduced, alongside high resolution timers that enable this.
+Lastly, many kernel library programs were too slow for \acrshort{rt} applications.
+Those have been refactored, as for instance \code{printk}.
+All being said, \code{PREEMPT\_RT} is unlikely to replace \acrshort{rtos} anytime soon.
+\code{PREEMPT\_RT} meeting deadlines cannot be verified due to the complexity of the environment (the Linux kernel).
+Thus, it is not suitable for any security-critical implications.
+Additionally, its performance cannot keep up with dedicated \acrshort{rtos}.
+This puts \code{PREEMPT\_RT} in a place where it can be a good alternative in many \emph{soft}/\emph{firm} \acrshort{rt} scenarios.
+However, if verification is required, or there are hard performance requirements, proprietary, specialized software should still be preferred.
+
 
 \printglossaries
 
