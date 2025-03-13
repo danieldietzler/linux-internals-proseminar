@@ -277,32 +277,38 @@ Predominantly, actual spinlocks are necessary in interrupt handlers that do not 
 
 \subsection{Preemption}\label{subsec:preemption}
 In order to fulfill \acrshort{rt} requirements, preemption is of utmost importance.
-Before the \code{PREEMPT\_RT} patch there have been three preemption modes in the Linux kernel: \emph{no forced preemption (server)}, \emph{voluntary kernel preemption (desktop)}, and \emph{preemptible kernel (low-latency desktop)}~\cite{lf:preemption}.
+Before the \code{PREEMPT\_RT} patch there have been three preemption modes in the Linux kernel: \code{PREEMPT\_NONE}, \code{PREEMPT\_VOLUNTARY}, and \code{PREEMPT}~\cite{lf:preemption,kernel_preemption_modes}.
 
-As the name suggests, \emph{no forced preemption} (\code{PREEMPT\_NONE}~\cite{mckenney_realtime_2005}) does not have any additional preemption points.
+As the name suggests, \code{PREEMPT\_NONE} does not have any additional preemption points~\cite{kernel_preemption_modes}.
 The only scenarios where preemption happens are for system call returns and interrupts.
 This is the traditional Linux, which emphasizes on throughput.
 
-With \emph{voluntary kernel preemption} (\code{PREEMPT\_VOLUNTARY}~\cite{mckenney_realtime_2005}), some explicit preemption points are added to the kernel code.
+With \code{PREEMPT\_VOLUNTARY}, some explicit preemption points are added to the kernel code~\cite{kernel_preemption_modes}.
 Specifically \code{might\_sleep()} and \code{might\_sleep\_if()} calls become preemption points~\cite{day_re_2007}.
 \emph{Voluntary Kernel Preemption} is on regular Linux desktops ~\cite{mckenney_realtime_2005}.
 
-In \emph{preemptible kernel} (\code{PREEMPT\_DESKTOP}~\cite{mckenney_realtime_2005}) mode, all kernel code that is not running in a critical section becomes preemptible~\cite{lf:preemption}.
+In \code{PREEMPT} mode, all kernel code that is not running in a critical section becomes preemptible~\cite{kernel_preemption_modes}.
 That is, sections that are not covered by a mutex.
 This reduces the kernel latency and is thus used in low-latency desktop applications.~\cite{mckenney_realtime_2005}.
 However, this does not make Linux a \acrshort{rtos}.
 \newline
 
-\noindent The \code{PREEMPT\_RT} patch added two new preemption modes to the Linux kernel, namely \emph{Preemptible kernel (basic \acrshort{rt})} and \emph{fully preemptible kernel (\acrshort{rt})}~\cite{lf:preemption}.
+\noindent The \code{PREEMPT\_RT} patch added two new preemption modes to the Linux kernel, namely \emph{Preemptible kernel (basic \acrshort{rt})} and \code{PREEMPT\_RT}, which is named similar to the patch~\cite{lf:preemption,kernel_preemption_modes}.
 
 \emph{Preemptible kernel (basic \acrshort{rt})} is mainly intended for debugging purposes.
-Its only difference in comparison to \emph{preemptible kernel (low-latency desktop)} is that it forces the use of threaded soft interrupt handlers, if not explicitly disabled for that handler~\cite{lf:preemption}.
+Its only difference in comparison to \code{PREEMPT} is that it forces the use of threaded soft interrupt handlers, if not explicitly disabled for that handler~\cite{lf:preemption}.
 Threaded interrupt handlers are preemptible and make up a significant part of the \code{PREEMPT\_RT} patch.
 
-Finally, \emph{fully preemptible kernel} actually constitutes \acrshort{rt} Linux.
-In addition to the \emph{preemptible kernel}, most critical sections are preemptible as well, making the Linux kernel broadly preemptible~\cite{lf:preemption}.
+Finally, the \code{PREEMPT\_RT} kernel mode actually constitutes \acrshort{rt} Linux.
+In addition to \code{PREEMPT}, most critical sections are preemptible as well, making the Linux kernel broadly preemptible~\cite{lf:preemption}.
 Furthermore, threaded interrupt handlers are enforced, too.
 Substituting spinlocks with \code{rt\_mutex}es as well as breaking up large non-preemptible sections -- as discussed in \autoref{subsec:locking} -- lastly give Linux its \acrshort{rt} behavior~\cite{lf:preemption}.
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[scale=.36, clip]{assets/preemption_modes.png}
+  \caption{Relevant Preemption Modes}
+\end{figure}
 
 \subsection{High Resolution Timers}\label{subsec:hr-timers}
 Among the most important aspects of a \acrshort{rtos} is a tight scheduler that can very quickly switch between processes ~\cite{reghenzani_realtime_2019}.
@@ -340,6 +346,12 @@ It has to always schedule the process with the earliest deadline.
 This way, all deadlines are trivially held -- assuming they were possible to meet in the first place~\cite{bristot_de_oliveira_deadline_2018}.
 This approach also ensures the minimal amount of context switches ~\cite{bristot_de_oliveira_deadline_2018}.
 Only when a process with an earlier deadline than the currently scheduled process comes in, the scheduler needs to reschedule and triggers a context switch.
+
+\begin{figure}[htb]
+  \centering
+  \includesvg[scale=.7]{assets/deadline_scheduling.svg}
+  \caption{Deadline scheduling}
+\end{figure}
 
 However, this approach also comes with downsides.
 Inherently, deadline scheduling does not deliver minimal response times ~\cite{bristot_de_oliveira_deadline_2018}.
@@ -434,6 +446,14 @@ The idea of \emph{probabilistic hard \acrshort{rt} systems} is to use statistica
 However, that is not a broadly accepted term yet and realistically \code{PREEMPT\_RT} is not a \emph{hard} RTOS~\cite{reghenzani_realtime_2019} -- which it does not aims to be~\cite{perlow_trenches_2021}.
 
 \subsection{Performance}
+
+\begin{figure*}[htb]
+  \centering
+  \includegraphics[scale=.162]{assets/preemptrt_latencies.png}
+  \caption{Latencies under load~\cite{li_performance_2023}}
+  \label{fig:latencies}
+\end{figure*}
+
 \citeauthor{reghenzani_realtime_2019} summarized various articles measuring \code{PREEMPT\_RT} and comparing it to other \acrshort{rtos}~\cite{reghenzani_realtime_2019}:
 \code{PREEMPT\_RT} showed a scheduling latency that maxed out at $10 - 15\mu s$, overall being similar to the RTOS $\text{LITMUS}^{\text{RT}}$~\cite{litmusrt}.
 In CPU-bound workloads, it actually outperformed $\text{LITMUS}^{\text{RT}}$ in latency speed ($\sim 17\mu s$ vs. $\sim 47\mu s$).
@@ -455,6 +475,8 @@ Especially for a file copy workload the authors have seen a decrease in throughp
 This suggests that accessing a single device is not scalable with the kernel patch~\cite{li_performance_2023}.
 Furthermore, they ran a Linux kernel in a QEMU/KVM VM on top of the Linux host with \code{PREEMPT\_RT} enabled.
 They saw that running non-\acrshort{rt} processes in that VM yielded a 40\% higher throughput rate compared to running it on the \code{PREEMPT\_RT}-enabled host~\cite{li_performance_2023}.
+As can be seen in \autoref{fig:latencies}, the impact of the VM on the overall system latency is also minimal.
+There is a slight variation in the lower latencies between (b) and (c), with a reduction in latencies on the upper end in (c)~\cite{li_performance_2023}.
 Thus, given the minimal virtualization overhead, this could be a valid mitigation strategy~\cite{li_performance_2023} to feasibly run non-\acrshort{rt} tasks with \code{PREEMPT\_RT} enabled.
 
 \section{Conclusion}
