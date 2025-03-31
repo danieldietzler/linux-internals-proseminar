@@ -10,13 +10,14 @@
 
 %%%%%%%%%%%%%%%%%% Document %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % TODO: Change draft to final before submitting final version.
-\usepackage[draft]{styles/ka-style}
+\usepackage[final]{styles/ka-style}
 \usepackage{xspace,ifthen,graphicx,listings}
 \setlength{\marginparwidth}{2cm} % to make todonotes fit in twocolumn
 \usepackage{todonotes}
 \usepackage{svg}
 \usepackage{dblfloatfix}
 \usepackage{glossaries}
+\usepackage{array}
 
 \usepackage[
    pdfauthor={Daniel Dietzler},
@@ -59,16 +60,14 @@ Karlsruhe Institute of Technology, ITEC - OS
 
 \begin{abstract}
   There are environments like automotive and aviation where sheer throughput is not of utmost importance.
-  Instead, it is necessary that processes finish within an expected time frame.
+  Instead, it is necessary that processes finish within an expected time frame for reliability of the service.
   Those systems are called \emph{real-time}.
 
   Writing a patch to make Linux real-time took a lot of time and effort.
   Starting in the early 2000s, a set of patches called \code{PREEMPT\_RT} made its way into Linux kernel 6.11 in late 2024.
-  It involves various changes and rewrites.
-  Primary efforts were targeted at making more kernel code preemptible and refactoring slow kernel applications.
-  Furthermore, we will discuss performance evaluations from various studies.
-
   The goal of \code{PREEMPT\_RT} is to allow many projects with soft real-time needs to switch to Linux.
+  Primary efforts were targeted at making more kernel code preemptible and refactoring slow kernel applications.
+  After discussing these changes, we will compare performance evaluations from various studies.
 \end{abstract}
 
 \section{Introduction}\label{sec:introduction}
@@ -79,28 +78,28 @@ In a car for instance, an airbag must deploy at the exact correct time.
 Deploying too early or too late may impose significant harm to the passenger.
 This is what \acrshort{rtos} are built for.
 With other \acrshort{rt} applications like streaming services becoming more popular, there is an ever-growing need for simpler, yet more feature-rich \acrshort{rtos}~\cite{reghenzani_realtime_2019}.
-Current solutions are good at being real-time.
-However, they generally lack fundamental features such as a fully implemented network stack.
-For a streaming service that is not as critical but requires modern networking, this is a problem.
-Additionally, \acrshort{rtos} require developers that are specialized in that area.
-Many people have experience with writing software for Linux however.
-Thus, the barrier of entry becomes significantly lower.
-
+Current solutions provide real-time guarantees, however they generally lack fundamental features such as a fully implemented network stack.
+For a streaming service that does not have hard \acrshort{rt} constraints but requires modern networking, this is a problem.
 
 The \code{PREEMPT\_RT} patch set involved reworking interrupt handling, replacing spin locks, and shrinking locked code sections.
-Secondly, the scheduler had to be improved to reduce context switching latencies.
+Furthermore, the scheduler had to be improved to reduce context switching latencies.
 Additionally, a new deadline scheduler class has been introduced.
 Lastly, a variety of functions in the kernel stack had to be refactored.
-They are essential for daily use, but were to slow for real-time applications.
-As an example we will talk about \code{printk}.
+They are used by many libraries but had slow average runtimes infeasible for \acrshort{rt}.
+As an example we will talk about \code{printk} in \autoref{subsubsec:printk}.
 
-For performance, the literature suggests that \code{PREEMPT\_RT} cannot keep up with specialized Real-Time operating systems in all scenarios, especially in worst case analysis.
+For performance, the literature suggests that \code{PREEMPT\_RT} cannot keep up with specialized Real-Time operating systems in all scenarios, especially in worst case analysis~\cite{reghenzani_realtime_2019,li_performance_2023}.
 However, Real-Time Linux is close to being a proper hard Real-Time operating system and sufficient for most applications.
 
 The patch does not aim to replace existing operating systems in critical applications, such as ones where life depends on.
 Much more does it try to offer an alternative for soft/firm \acrshort{rt} scenarios that still should be very reactive, but for the sake of usability.
 For those projects it would remove the extra burden of  \acrshort{rtos} and enable them to benefit from the broad adoption and feature-richness of Linux.
-\section{Real-Time}\label{subsec:real-time}
+
+In the following, we give an over view of \acrshort{rt} in \autoref{sec:real-time}.
+Then, we outline the history of \acrshort{rt} Linux in \autoref{sec:history}.
+In \autoref{sec:patch} we focus on some central changes of the \code{PREEMPT\_RT} patch.
+Finally, we discuss the patch and its performance in \autoref{sec:discussion}.
+\section{Real-Time}\label{sec:real-time}
 \acrfull{rt} requires \emph{temporal determinism}.
 That is, a process must terminate within a given time frame for its result to be correct~\cite{reghenzani_realtime_2019}.
 Additionally, \citeauthor{buttazzo_hard_1997} names four more requirements \acrshort{rt} systems must fulfill~\cite{buttazzo_hard_1997}:
@@ -112,7 +111,7 @@ Additionally, \citeauthor{buttazzo_hard_1997} names four more requirements \acrs
   \item Maintainability
 \end{itemize}
 
-\acrshort{rt} approaches can be categorized into \emph{soft}, \emph{firm}, and \emph{hard} \acrshort{rt}~\cite{buttazzo_hard_1997}.
+These \acrshort{rt} systems can be categorized into \emph{soft}, \emph{firm}, and \emph{hard} \acrshort{rt}~\cite{buttazzo_hard_1997}.
 
 \emph{Soft \acrshort{rt}} systems suffer from \acrfull{qos} degradation.
 That is, a video stream may stutter for instance.
@@ -138,7 +137,7 @@ Thus, having simple patches helps with maintainability.
 Furthermore, code related to the changes should also be refactored where possible in order to reduce the overall complexity~\cite{perlow_trenches_2021}.
 
 
-\section{History}
+\section{History}\label{sec:history}
 The idea of \acrshort{rt} Linux has been around for over two decades ~\cite{casimiro_how_2000}.
 Early on, researchers found interest in making Linux \acrshort{rt} capable.
 However, initial efforts were uncoordinated and thus yielded no significant results ~\cite{perlow_trenches_2021}.
@@ -167,7 +166,7 @@ This requires specialized developers and multiple versions of the same applicati
 \begin{figure*}[ht]
   \centering
   \includegraphics[scale=.50, clip]{assets/cokernel.png}
-  \caption{Cokernel approaches. (a) RTAI, (b) Xenomai, (c) RTLinux~\cite{reghenzani_realtime_2019} \label{fig:cokernel}}
+  \caption{Cokernel approaches. (a) RTAI, (b) Xenomai, (c) RTLinux Obtained from~\cite{reghenzani_realtime_2019} \label{fig:cokernel}}
 \end{figure*}
 Nonetheless, cokernel approaches are broadly represented in today's \acrshort{rtos} landscape.
 \emph{RTAI}~\cite{rtai-docs}, \emph{Xenomai}~\cite{xenomai-docs}, and \emph{RTLinux}\footnote{Note that this is \emph{not} \acrlong{rt} Linux.}~\cite{rtlinux}. are all popular examples of modern \acrshort{rtos} building on cokernels as can be seen in \autoref{fig:cokernel}~\cite{reghenzani_realtime_2019}.
@@ -187,15 +186,14 @@ Within a few months the team built a proof of concept~\cite{perlow_trenches_2021
 While being "far from a maintainable and production-ready solution"~\cite[Gleixner]{perlow_trenches_2021}, it showed that the idea a \acrshort{rt} Linux was feasible~\cite{perlow_trenches_2021}.
 Originally planned for 2018~\cite{lf:history}, \code{PREEMPT\_RT} made it into the LTS kernel in 2024 with kernel version 6.11~\cite{lf:versions}.
 
-\section{Kernel Patch: \code{PREEMPT\_RT}}
+\section{Kernel Patch: \code{PREEMPT\_RT}}\label{sec:patch}
 In order to make the Linux kernel \acrshort{rt}-capable, many fundamental changes had to be made.
-All of those had been grouped in a set of patches called \code{PREEMPT\_RT}.
+All of those are grouped in a set of patches called \code{PREEMPT\_RT}.
 Firstly, scheduler improvements were necessary in order to reduce latencies and achieve tighter timing~\cite{mckenney_realtime_2005}.
 New kernel analytics tools helped identifying code sections that could improved, while also uncovering new bugs in Linux~\cite{reghenzani_realtime_2019}.
-On \acrshort{rtos} context switches happen more frequently due to the nature of \acrshort{rt} applications.
-That is, because in order to guarantee turnaround times, low priority processes need to be preempted if a high priority process comes in~\cite{buttazzo_hard_1997}.
+On \acrshort{rtos} context switches happen more frequently due to the nature of \acrshort{rt} applications, that is, because in order to guarantee turnaround times, low priority processes need to be preempted if a high priority process comes in~\cite{buttazzo_hard_1997}.
 This directly leads to the need to reduce the amount of non-preemptible kernel code~\cite{reghenzani_realtime_2019}.
-Part of the Linux kernel that was non-preemptible were interrupt handlers \cite{reghenzani_realtime_2019}.
+One part of the Linux kernel that was non-preemptible were interrupt handlers \cite{reghenzani_realtime_2019}.
 That is why, in the following, we start by looking at interrupts in \autoref{subsec:interrupts}.
 After that, we will be going over locking mechanisms and the introduction of a new lock with \code{PREEMPT\_RT} in \autoref{subsec:locking}.
 Then, we will discuss preemption as a central aspect of \acrshort{rt} systems, followed by a section on high resolution timers in \autoref{subsec:hr-timers}.
@@ -203,17 +201,16 @@ Those timers enable better scheduling, which is crucial for \acrshort{rt}.
 Lastly, \autoref{subsec:scheduler} discusses the changes to the scheduler.
 
 \subsection{Interrupts}\label{subsec:interrupts}
-Interrupt handler are subdivided into a \emph{soft} and \emph{hard} part.
-The hard interrupt request handler responds immediately and takes care of the most important operations~\cite{reghenzani_realtime_2019}.
-Later, the soft interrupt request handler does additional processing~\cite{reghenzani_realtime_2019}.
-By default, soft interrupt request handlers also run in the context of the interrupt service routine~\cite{lf:irq}.
-By being part of the interrupt service routine, hardware interrupts are disabled~\cite{lf:irq}.
-This makes soft interrupt request handlers non-preemptible~\cite{lf:irq}.
-With \code{PREEMPT\_RT}, a flag allows soft interrupt request handlers to run in a threaded context instead, making them preemptible~\cite{reghenzani_realtime_2019, lf:irq}.
-By default, that thread will be scheduled with \acrfull{fifo} and a high priority of 50~\cite{lf:irq}.
+Interrupt handler are divided into a \emph{soft} and \emph{hard} part.
+The hard interrupt request handler responds immediately and takes care of the most important operations such as determining the handler for the interrupt and acknowledging the interrupt~\cite{kernel_labs:interrupts}.
+Then, a soft interrupt may be triggered to further process the current interrupt by executing a callback function~\cite{kernel_labs:interrupts}.
+Soft interrupt handlers are scheduled as a regular kernel thread and may be preempted~\cite{reghenzani_realtime_2019}.
+With \code{PREEMPT\_RT} a new flag is introduced that makes hard interrupt handlers in a kernel thread as well~\cite{lf:irq}.
+Thus, hard interrupt handlers become preemtible, too.
+By default, that hard interrupt handler thread will be scheduled with \acrfull{fifo} and a high priority of 50~\cite{lf:irq}.
 
 For interrupt handlers that -- under no circumstances -- may run in a threaded context, there is an extra flag to disable this behavior per handler~\cite{lf:irq}.
-Generally, one should be careful with this flag though.
+Generally, this flag should be used with caution.
 It will be prone to deadlocks, making the development of those handlers harder~\cite{mckenney_realtime_2005}.
 For instance, another preempted thread could have a lock on a resource that is required by the soft interrupt request handler.
 If the handler cannot be preempted by e.g. a timer at some point it will wait for that lock to free forever, hogging CPU resources.
@@ -222,12 +219,10 @@ One example for forcing a handler to run in the interrupt context are per-CPU ti
 With their tight schedules and low-level relevance, they qualify for being non-preemptible~\cite{mckenney_realtime_2005}.
 
 \subsection{Locking}\label{subsec:locking}
-In order to further reduce the amount of non-preemptible code, locked, critical sections have been narrowed~\cite{mckenney_realtime_2005}.
+In order to further reduce the amount of non-preemptible code, critical sections that require locking have been narrowed~\cite{mckenney_realtime_2005}.
 Additionally, locking mechanisms have been reworked and a new lock got added.
 
-In the kernel, many locks used to be spinlocks ~\cite{lf:sleeping-spinlocks}.
-
-\subsubsection{Changes}
+In the kernel, many locks used to be spinlocks~\cite{lf:sleeping-spinlocks}.
 With \code{PREEMPT\_RT}, all \code{spinlock\_t} kernel spinlocks have been replaced by \code{rt\_mutex} by default.
 
 \code{rt\_mutex} implements \emph{priority inheritance} to avoid the problem of \emph{priority inversion}~\cite{rostedt_rtmutex_2017}.
@@ -236,25 +231,32 @@ In that scenario, the higher priority process cannot run until the lower priorit
 For \code{rt\_mutex}, \acrfull{pi} is implemented by giving each process a \acrshort{pi} \emph{rbtree}, depicting the dependencies of the waiters.
 A \acrshort{pi} rbtree of a process stores the top waiter, that is the process with the highest priority currently waiting for that lock, of every lock that is held by that process ~\cite{rostedt_rtmutex_2017}.
 The dependencies of processes and their locks is called a \acrshort{pi} chain~\cite{rostedt_rtmutex_2017}.
+We start with processes A-F and Locks L1-L5:
 \lstset{basicstyle=\small}
 \begin{lstlisting}[caption={Example from~\cite{rostedt_rtmutex_2017}}]
-Processes:  A, B, C, D, E
-Mutexes:  L1, L2, L3, L4
+Processes:  A, B, C, D, E, F
+Mutexes:  L1, L2, L3, L4, L5
 \end{lstlisting}
 \begin{figure}[htb]
   \centering
-  \includesvg[scale=.8]{assets/pi_chain.svg}
+  \includesvg{assets/pi_chain.svg}
   \caption{Example from~\cite{rostedt_rtmutex_2017}}
+  \label{fig:pi_chain}
 \end{figure}
+The ownership of locks can be seen in the first graph in \autoref{fig:pi_chain}.
+For instance, A currently holds L1, while B holds L2 but requires L1.
 Translating this example into a \acrshort{pi} chain results in this:
 \begin{lstlisting}[caption={Simple \acrshort{pi} chain~\cite{rostedt_rtmutex_2017}}]
 E->L4->D->L3->C->L2->B->L1->A
 \end{lstlisting}
-By adding another process $F$ and a mutex $L5$ with the dependencies as follows
+We can see that the direction of the arrows has changed.
+A owning L1, which is required by B, yields a dependency from B to L1 to A.
+
+By adding another process $F$ and a mutex $L5$ as can be seen in the second graph in \autoref{fig:pi_chain}, there is an added \acrshort{pi} chain for F:
 \begin{lstlisting}[caption={Second \acrshort{pi} chain~\cite{rostedt_rtmutex_2017}}]
 F->L5->B->L1->A
 \end{lstlisting}
-we can see multiple chains merged together:
+Merging the two we obtain the following \acrshort{pi} chain for the second graph in \autoref{fig:pi_chain}:
 \begin{lstlisting}[caption={\acrshort{pi} chain~\cite{rostedt_rtmutex_2017}}]
 E->L4->D->L3->C->L2-+
                     |
@@ -272,20 +274,20 @@ This has been done to avoid changing too much kernel code and making pull reques
 We argue that this comes at the expense of non-intuitive kernel code.
 If \code{PREEMPT\_RT} is enabled, \code{spinlock\_t} acts as a \code{rt\_mutex}, otherwise it acts as a normal spinlock~\cite{mckenney_realtime_2005}.
 In case there is need for a genuine spinlock that always behaves as such, \code{raw\_spinlock\_t} can used instead~\cite{mckenney_realtime_2005, chyyuu_github_2017}.
-Predominantly, actual spinlocks are necessary in interrupt handlers that do not run in a threaded context and shall not be preempted.
+Predominantly, genuine spinlocks are necessary in interrupt handlers that do not run in a threaded context and shall not be preempted.
 
 
 \subsection{Preemption}\label{subsec:preemption}
-In order to fulfill \acrshort{rt} requirements, preemption is of utmost importance.
+In order to fulfill \acrshort{rt} requirements, preemption is essential.
 Before the \code{PREEMPT\_RT} patch there have been three preemption modes in the Linux kernel: \code{PREEMPT\_NONE}, \code{PREEMPT\_VOLUNTARY}, and \code{PREEMPT}~\cite{lf:preemption,kernel_preemption_modes}.
 
 As the name suggests, \code{PREEMPT\_NONE} does not have any additional preemption points~\cite{kernel_preemption_modes}.
 The only scenarios where preemption happens are for system call returns and interrupts.
-This is the traditional Linux, which emphasizes on throughput.
+This is the traditional Linux preemption mode, which emphasizes on throughput.
 
 With \code{PREEMPT\_VOLUNTARY}, some explicit preemption points are added to the kernel code~\cite{kernel_preemption_modes}.
 Specifically \code{might\_sleep()} and \code{might\_sleep\_if()} calls become preemption points~\cite{day_re_2007}.
-\emph{Voluntary Kernel Preemption} is on regular Linux desktops ~\cite{mckenney_realtime_2005}.
+Voluntary Kernel Preemption is on regular Linux desktops ~\cite{mckenney_realtime_2005}.
 
 In \code{PREEMPT} mode, all kernel code that is not running in a critical section becomes preemptible~\cite{kernel_preemption_modes}.
 That is, sections that are not covered by a mutex.
@@ -302,30 +304,45 @@ Threaded interrupt handlers are preemptible and make up a significant part of th
 Finally, the \code{PREEMPT\_RT} kernel mode actually constitutes \acrshort{rt} Linux.
 In addition to \code{PREEMPT}, most critical sections are preemptible as well, making the Linux kernel broadly preemptible~\cite{lf:preemption}.
 Furthermore, threaded interrupt handlers are enforced, too.
-Substituting spinlocks with \code{rt\_mutex}es as well as breaking up large non-preemptible sections -- as discussed in \autoref{subsec:locking} -- lastly give Linux its \acrshort{rt} behavior~\cite{lf:preemption}.
+Substituting spinlocks with \code{rt\_mutex}es as well as breaking up large non-preemptible sections -- as discussed in \autoref{subsec:locking} -- lastly give Linux its \acrshort{rt} properties~\cite{lf:preemption}.
 
-\begin{figure}[htb]
+\begin{table}[h!]
   \centering
-  \includegraphics[scale=.36, clip]{assets/preemption_modes.png}
-  \caption{Relevant Preemption Modes}
-\end{figure}
+  \begin{tabular}[c]{ |m{2.6cm}|m{1.123cm}|m{1.24cm}|m{1.33cm}| }
+    \hline
+                              & Few explicit points & All code not in critical sections & Threaded IRQ                        \\
+    \hline
+    \code{PREEMPT\_NONE}      &                     &                                   &                                     \\
+    \hline
+    \code{PREEMPT\_VOLUNTARY} & \centering $\times$ &                                   &                                     \\
+    \hline
+    \code{PREEMPT}            & \centering $\times$ & \centering $\times$               &                                     \\
+    \hline
+    \code{PREEMPT\_RT}        & \centering $\times$ & \centering $\times$               & \centering $\times$ \arraybackslash \\
+    \hline
+  \end{tabular}
+  \caption{Preemption points with preemption modes}
+  \label{tab:preemption_points}
+\end{table}
+
+An overview of the aforementioned kernel modes and their preemption points is depicted in \autoref{tab:preemption_points}.
 
 \subsection{High Resolution Timers}\label{subsec:hr-timers}
-Among the most important aspects of a \acrshort{rtos} is a tight scheduler that can very quickly switch between processes ~\cite{reghenzani_realtime_2019}.
+Among the most important aspects of a \acrshort{rtos} is a scheduler that can very quickly switch between processes ~\cite{reghenzani_realtime_2019}.
 This comes down to two things; (1) preemption and (2) a "good" \acrshort{rt} scheduler.
 We have already seen (1) in \autoref{subsec:preemption}.
 In order to achieve (2), there is one more part required; better timers.
 Before \code{PREEMPT\_RT}, system timers could only be set with the precision of the \emph{tick rate}~\cite{reghenzani_realtime_2019} due to an absence of high resolution timers in hardware in the early days of Linux.
 With \code{PREEMPT\_RT}, \acrshort{rt} Linux introduces \emph{high resolution timers}~\cite{lf:timers}.
 For the first time in Linux, they allow nanosecond-granular timers ~\cite{reghenzani_realtime_2019}.
-This allows to e.g. configure finer timer interrupts, resulting in a more reactive scheduling.
-Threads do not take up unnecessary time before they get preempted even though they already finished computing.
+This allows for instance to configure finer timer interrupts, resulting in a more reactive scheduling.
+Threads do not take up unnecessary time before they get preempted even though they already finished running.
 
 \subsection{Scheduler}\label{subsec:scheduler}
 A typical scheduler can have multiple \emph{scheduler classes} based on which it evaluates scheduling decisions.
-Each class hereby has its own scheduling algorithm and rules.
+Each class has its own scheduling algorithm and rules.
 Linux has two realtime scheduler classes; the \emph{(POSIX) realtime scheduler} and the \emph{deadline scheduler}~\cite{bristot_de_oliveira_deadline_2018}.
-Firstly, the \emph{realtime scheduler class} implements \code{SCHED\_FIFO} and \code{SCHED\_RR}~\cite{lf:scheduler}.
+Firstly, the \emph{realtime scheduler class} implements the scheduling policies \code{SCHED\_FIFO} and \code{SCHED\_RR}~\cite{lf:scheduler}.
 Both schedule processes based on their fixed priority~\cite{lf:scheduler,de_oliveira_timing_2016}.
 In \acrfull{fifo} fashion, for processes of the same priority, the process that arrived first in the queue of processes to be scheduled will run as long as possible before any other process gets scheduled with \code{SCHED\_FIFO}.
 Contrarily, \code{SCHED\_RR} uses \acrfull{rr}.
@@ -339,7 +356,7 @@ Processes scheduled using the \emph{deadline scheduler class} can preempt other 
 Deadline scheduling is simple for both, the user to work with, and implementing a scheduler~\cite{bristot_de_oliveira_deadline_2018}.
 A user does not need to think about priorities.
 Especially, they do not need to think about other processes, and how those might impact their process ~\cite{bristot_de_oliveira_deadline_2018}.
-The user simply has to say when the process needs to have finished, and the scheduler by definition will try to make it work as can be seen in the following.
+The user has to say when the process needs to have finished, and the scheduler by definition will try to make it work.
 
 For the implementation of the scheduler, there is no need to analyze any other processes, that is evaluate priorities, consider priority inheritance, follow complex scheduling policies~\cite{bristot_de_oliveira_deadline_2018}.
 It has to always schedule the process with the earliest deadline.
@@ -347,31 +364,26 @@ This way, all deadlines are trivially held -- assuming they were possible to mee
 This approach also ensures the minimal amount of context switches ~\cite{bristot_de_oliveira_deadline_2018}.
 Only when a process with an earlier deadline than the currently scheduled process comes in, the scheduler needs to reschedule and triggers a context switch.
 
-\begin{figure}[htb]
-  \centering
-  \includesvg[scale=.7]{assets/deadline_scheduling.svg}
-  \caption{Deadline scheduling}
-\end{figure}
-
 However, this approach also comes with downsides.
 Inherently, deadline scheduling does not deliver minimal response times ~\cite{bristot_de_oliveira_deadline_2018}.
-Furthermore, "it is possible to face a domino effect"~\cite[Daniel Bristot de Oliveira]{bristot_de_oliveira_deadline_2018}.
+Furthermore, "it is possible to face a domino effect", as described by Daniel Bristot de Oliveira~\cite{bristot_de_oliveira_deadline_2018}.
 Assuming the process with the earliest deadline has a deadline that is unreachable because it is too soon.
-The scheduler will still schedule that process and spend CPU cycles on it, even though it can never finish in time.
-This can cause the next process to not meet its deadline as well, even though it could have reached it, if it was scheduled first~\cite{bristot_de_oliveira_deadline_2018}.
+The scheduler will still schedule that process and spend CPU cycles on it, even if it can never finish in time.
+This can cause the next process to not meet its deadline as well, although it could have been reached, if it was scheduled first~\cite{bristot_de_oliveira_deadline_2018}.
 Thus, such an unmeetable deadline can trickle down to all subsequent processes and cause an entire batch to be late.
 
 
 \subsection{Kernel Library}
+\the\linewidth
 In addition to fundamental changes to the scheduler, locking, and preemption mechanisms, there were also libraries used in the kernel that needed updating and have a more noticeable impact on users.
-Some essential utility implementations in the kernel had latencies too high for a \acrshort{rt} application~\cite{edge_discussion_2022}.
+Some essential utilities in the kernel had average latencies too high for a \acrshort{rt} application~\cite{edge_discussion_2022}.
 As an example, we will be discussing \code{printk}, the kernel equivalent to \code{printf}.
 
-\subsubsection{\code{printk}}
+\subsubsection{\code{printk}}\label{subsubsec:printk}
 According to \citeauthor{edge_discussion_2022}, \code{printk}'s latency used to be "unacceptably high" for \acrshort{rt} Linux~\cite{edge_discussion_2022}.
-Additionally, a general rework of the library has been long overdue anyways ~\cite{edge_discussion_2022}.
+Additionally, a general rework of the library was due regardless~\cite{edge_discussion_2022}.
 Lastly, \code{printk} used to use a global kernel lock, increasing the latency of the entire system further~\cite{gleixner_printk_2024}.
-An initial suggestion to make \code{printk} work in \acrshort{rt} Linux essentially disabled \code{printk} if \code{PREEMPT\_RT} is enabled~\cite{mladek_printk_2022}.
+An initial suggestion to make \code{printk} work in \acrshort{rt} Linux disabled \code{printk} if \code{PREEMPT\_RT} is enabled~\cite{mladek_printk_2022}.
 Linus Torvalds considered this inviable~\cite{torvalds_initial_2022}, leading to a new implementation.
 
 \paragraph{Changes.}
@@ -379,7 +391,7 @@ Primarily, the global kernel lock has been replaced.
 Instead, there are now per-console kernel threads which take care of flushing normal priority messages to the console~\cite{gleixner_printk_2024}.
 This directly leads to the second addition; priorities.
 Every printing process has a priority and needs to check, each time it prints a byte, if it can still print or if there is a process with a higher priority waiting~\cite{edge_discussion_2022}.
-\emph{panic} messages can do a \emph{hostile takeover} of a console if necessary.
+\emph{panic} messages can do a \emph{hostile takeover} of a console if necessary~\cite{edge_discussion_2022}.
 That is, forcefully taking over a console that is currently in use.
 That allows to get as many information to the user before the system or process dies completely~\cite{edge_discussion_2022}.
 To decide which console to print to, the \code{printk} implementation is now differentiating \emph{safe} and \emph{unsafe} consoles.
@@ -388,7 +400,7 @@ In case of a \emph{panic}, the process will always try to print to a safe consol
 If there is none available, the process will try its final flush on an unsafe console and "Hope and pray"~\cite{kernel_development_community_console}.
 That means there is no guarantee if any characters will be printed or not.
 
-\section{Discussion}
+\section{Discussion}\label{sec:discussion}
 \subsection{RTOS vs \code{PREEMPT\_RT}}
 Traditional \acrshort{rtos} are highly specialized in their domain.
 Specifically, they do not have a standard Linux kernel.
@@ -431,7 +443,7 @@ Gleixner explains that \acrshort{rt} Linux never aimed to be highly specialized~
 The most critical applications that require formal validation and an absolute certainty should not rely on \code{PREEMPT\_RT}.
 
 This also puts \acrshort{rt} Linux in an odd position when trying to sort it into the \emph{soft}, \emph{firm}, and \emph{hard} hierarchy.
-As mentioned before in \autoref{subsec:real-time}, \emph{soft} \acrshort{rt} systems can miss deadlines without any bad consequences.
+As mentioned before in \autoref{sec:real-time}, \emph{soft} \acrshort{rt} systems can miss deadlines without any bad consequences.
 \emph{firm} systems do not cause any damage to people or systems if a result runs late, but their result becomes worthless.
 Lastly, \emph{hard} \acrshort{rtos} do not tolerate any late results.
 If a computation does not meet a deadline, people or systems can be damaged.
@@ -443,7 +455,7 @@ This is primarily due to the lack of formal verifiability~\cite{reghenzani_realt
 In conclusion, \code{PREEMPT\_RT} sits somewhere in between \emph{firm} and \emph{hard} \acrshort{rtos}.
 The terms \emph{95\% hard \acrshort{rt} systems} and \emph{probabilistic hard \acrshort{rt} systems} may be used to describe \acrshort{rt} Linux instead~\cite{reghenzani_realtime_2019}.
 The idea of \emph{probabilistic hard \acrshort{rt} systems} is to use statistical theories to describe the likelihood of environmental factors and based on that, obtain formal validation~\cite{reghenzani_realtime_2019}.
-However, that is not a broadly accepted term yet and realistically \code{PREEMPT\_RT} is not a \emph{hard} RTOS~\cite{reghenzani_realtime_2019} -- which it does not aims to be~\cite{perlow_trenches_2021}.
+However, that is not a broadly accepted term yet and realistically \code{PREEMPT\_RT} is not a \emph{hard} RTOS~\cite{reghenzani_realtime_2019} -- which it does not aim to be~\cite{perlow_trenches_2021}.
 
 \subsection{Performance}
 
